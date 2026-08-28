@@ -1,17 +1,15 @@
 # Grouper
 
-Needed a way to quickly create critique groups that were as different as possible, unique, or whatever.
+A quick way to split a class into critique groups that are as different as possible each time — pairings that haven't happened yet are favored over ones that have.
 
-Splits a class of 20 into 4 groups of 5, favoring pairings that haven't happened before over the semester. Hit the button, groups appear. Everything is stored in the browser (`localStorage`) — no backend, no login, no data leaves the machine.
+Splits a roster of 20 into 4 groups of 5. Click the button, groups appear. Everything lives in the browser (`localStorage`) — no backend, no login, nothing leaves the machine.
 
-## Running it
+## Getting started
 
 ```
 npm install
 npm run dev
 ```
-
-Then open the URL it prints.
 
 ## Editing the roster
 
@@ -19,12 +17,12 @@ Gear icon (top right) → **Edit roster**. All 20 names are required before grou
 
 ## Resetting for a new semester
 
-Gear icon → **Reset history**. Clears the "who's been grouped with whom" record so future groups are generated as if starting fresh. Doesn't touch the roster.
+Gear icon → **Reset history**. Clears the "who's been grouped with whom" record so future groups start fresh. Doesn't touch the roster.
 
-## Development
+## Scripts
 
 ```
-npm run dev      # start the dev server with hot reload
+npm run dev      # dev server with hot reload
 npm run build    # type-check and build to dist/
 npm run lint     # run oxlint
 ```
