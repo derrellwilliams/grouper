@@ -1,6 +1,5 @@
 import { pairKey } from '@/lib/storage'
 import type { PairHistory } from '@/types'
-import { GROUP_COUNT } from '@/types'
 
 // Kept small so this stays comfortably sub-frame on the main thread — a
 // 20-element hill climb converges in a handful of swaps, so 300 iterations
@@ -82,18 +81,35 @@ function evenSizes(total: number, count: number): number[] {
 }
 
 /**
- * Partitions `studentIds` into GROUP_COUNT groups, as evenly sized as
- * possible, minimizing the total historical co-occurrence weight of pairs
- * placed together this round. Runs randomized-restart hill climbing and
+ * Even-splits `total` across as many groups as `idealCount` allows without
+ * ever leaving one student alone in their own group — a lone leftover gets
+ * folded into another group (making it a 3) instead of standing as a group
+ * of 1. Only a single present student has no group to fold into.
+ */
+function groupSizesFor(total: number, idealCount: number): number[] {
+  let count = Math.max(1, Math.min(total, idealCount))
+  let sizes = evenSizes(total, count)
+  while (count > 1 && sizes.includes(1)) {
+    count -= 1
+    sizes = evenSizes(total, count)
+  }
+  return sizes
+}
+
+/**
+ * Partitions `studentIds` into groups of roughly `targetGroupSize`, as evenly
+ * sized as possible, minimizing the total historical co-occurrence weight of
+ * pairs placed together this round. Runs randomized-restart hill climbing and
  * picks uniformly among the lowest-cost results so equally-good (e.g.
  * all-zero-history) groupings still vary from one generation to the next.
  */
-export function generateGroups(studentIds: string[], history: PairHistory): string[][] {
-  if (studentIds.length < GROUP_COUNT) {
-    throw new Error(`generateGroups needs at least ${GROUP_COUNT} students, got ${studentIds.length}`)
+export function generateGroups(studentIds: string[], history: PairHistory, targetGroupSize: number): string[][] {
+  if (studentIds.length < 1) {
+    throw new Error('generateGroups needs at least 1 student')
   }
 
-  const sizes = evenSizes(studentIds.length, GROUP_COUNT)
+  const idealCount = Math.max(1, Math.round(studentIds.length / targetGroupSize))
+  const sizes = groupSizesFor(studentIds.length, idealCount)
 
   let best: { groups: string[][]; cost: number }[] = []
   let bestCost = Infinity

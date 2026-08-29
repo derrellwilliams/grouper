@@ -1,6 +1,11 @@
-export const GROUP_COUNT = 4
-export const GROUP_SIZE = 5
-export const ROSTER_SIZE = GROUP_COUNT * GROUP_SIZE
+export const ROSTER_SIZE = 20
+
+export const GROUP_SIZE_OPTIONS = [2, 3, 4, 5, 6] as const
+export type GroupSizeOption = (typeof GROUP_SIZE_OPTIONS)[number]
+export const DEFAULT_GROUP_SIZE: GroupSizeOption = 5
+
+/** Fewer than this and "splitting into groups" stops meaning anything. */
+export const MIN_PRESENT_TO_GENERATE = 2
 
 export interface Student {
   id: string
@@ -16,8 +21,8 @@ export type PairHistory = Record<string, number>
 
 export interface CurrentGroups {
   generatedAt: string
-  /** groups[0] is always "Group 1" through groups[3] "Group 4". Each inner array holds 5 student ids. */
+  /** groups[0] is "Group 1", groups[1] is "Group 2", etc. Group count and size vary with roster size and the chosen group size. */
   groups: string[][]
 }
 
-export type GroupNumber = 1 | 2 | 3 | 4
+export type GroupNumber = number

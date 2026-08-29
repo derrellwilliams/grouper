@@ -2,7 +2,7 @@
 
 A quick way to split a class into critique groups that are as different as possible each time — pairings that haven't happened yet are favored over ones that have.
 
-Splits a roster of 20 into 4 groups of 5. Click the button, groups appear. Everything lives in the browser (`localStorage`) — no backend, no login, nothing leaves the machine.
+Pick a group size (2–6), click the button, groups appear — as evenly sized as possible for however many students are present. Everything lives in the browser (`localStorage`) — no backend, no login, nothing leaves the machine.
 
 ## Getting started
 
@@ -13,7 +13,7 @@ npm run dev
 
 ## Editing the roster
 
-Gear icon (top right) → **Edit roster**. All 20 names are required before groups can be generated.
+Gear icon (top right) → **Edit roster**. Every student is listed alphabetically with a present/absent checkbox — uncheck anyone who's not in class today. All names are required, but at least 2 need to be present before groups can be generated.
 
 ## Resetting for a new semester
 

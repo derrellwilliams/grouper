@@ -4,6 +4,7 @@ export type SyncMessage =
   | { type: 'groups-updated' }
   | { type: 'roster-updated' }
   | { type: 'history-reset' }
+  | { type: 'group-size-updated' }
 
 type Listener = (message: SyncMessage) => void
 
@@ -22,7 +23,12 @@ if (channel) {
   }
 }
 
-const WATCHED_KEYS: string[] = [STORAGE_KEYS.roster, STORAGE_KEYS.pairHistory, STORAGE_KEYS.currentGroups]
+const WATCHED_KEYS: string[] = [
+  STORAGE_KEYS.roster,
+  STORAGE_KEYS.pairHistory,
+  STORAGE_KEYS.currentGroups,
+  STORAGE_KEYS.groupSize,
+]
 
 window.addEventListener('storage', (event: StorageEvent) => {
   if (!event.key || !WATCHED_KEYS.includes(event.key)) return
@@ -30,9 +36,11 @@ window.addEventListener('storage', (event: StorageEvent) => {
   const message: SyncMessage =
     event.key === STORAGE_KEYS.roster
       ? { type: 'roster-updated' }
-      : event.key === STORAGE_KEYS.pairHistory && event.newValue === '{}'
-        ? { type: 'history-reset' }
-        : { type: 'groups-updated' }
+      : event.key === STORAGE_KEYS.groupSize
+        ? { type: 'group-size-updated' }
+        : event.key === STORAGE_KEYS.pairHistory && event.newValue === '{}'
+          ? { type: 'history-reset' }
+          : { type: 'groups-updated' }
 
   for (const listener of listeners) listener(message)
 })

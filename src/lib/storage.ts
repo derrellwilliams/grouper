@@ -1,5 +1,5 @@
-import type { CurrentGroups, PairHistory, Roster } from '@/types'
-import { ROSTER_SIZE } from '@/types'
+import type { CurrentGroups, GroupSizeOption, PairHistory, Roster } from '@/types'
+import { DEFAULT_GROUP_SIZE, GROUP_SIZE_OPTIONS, ROSTER_SIZE } from '@/types'
 
 // Bumped from v1: the default roster changed from placeholder "Student N"
 // names to real names, and only a missing key gets seeded with the default —
@@ -7,6 +7,7 @@ import { ROSTER_SIZE } from '@/types'
 const ROSTER_KEY = 'grouper.roster.v2'
 const PAIR_HISTORY_KEY = 'grouper.pairHistory.v1'
 const CURRENT_GROUPS_KEY = 'grouper.currentGroups.v1'
+const GROUP_SIZE_KEY = 'grouper.groupSize.v1'
 
 const DEFAULT_STUDENT_NAMES = [
   'REDACTED',
@@ -106,8 +107,19 @@ export function nameLookup(roster: Roster): Map<string, string> {
   return new Map(roster.map((s) => [s.id, s.name]))
 }
 
+export function getGroupSize(): GroupSizeOption {
+  const raw = localStorage.getItem(GROUP_SIZE_KEY)
+  const parsed = Number(raw)
+  return (GROUP_SIZE_OPTIONS as readonly number[]).includes(parsed) ? (parsed as GroupSizeOption) : DEFAULT_GROUP_SIZE
+}
+
+export function setGroupSize(size: GroupSizeOption): void {
+  localStorage.setItem(GROUP_SIZE_KEY, String(size))
+}
+
 export const STORAGE_KEYS = {
   roster: ROSTER_KEY,
   pairHistory: PAIR_HISTORY_KEY,
   currentGroups: CURRENT_GROUPS_KEY,
+  groupSize: GROUP_SIZE_KEY,
 } as const
