@@ -28,7 +28,6 @@ export function SplitFlapText({ text, className }: SplitFlapTextProps) {
   const [chars, setChars] = useState<FlapChar[]>(() => text.split('').map(() => ({ display: NBSP, key: 0 })))
   const charsRef = useRef(chars)
   const prevText = useRef('')
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
 
   useEffect(() => {
     charsRef.current = chars
@@ -36,16 +35,16 @@ export function SplitFlapText({ text, className }: SplitFlapTextProps) {
 
   useEffect(() => {
     if (text === prevText.current) return
+    const previousText = prevText.current
     prevText.current = text
-
-    timers.current.forEach(clearTimeout)
-    timers.current = []
 
     const length = Math.max(text.length, charsRef.current.length)
     const from = Array.from({ length }, (_, i) => charsRef.current[i]?.display ?? NBSP)
     const to = Array.from({ length }, (_, i) => text[i] ?? NBSP)
 
     setChars((cur) => Array.from({ length }, (_, i) => cur[i] ?? { display: NBSP, key: 0 }))
+
+    const timers: ReturnType<typeof setTimeout>[] = []
 
     to.forEach((finalChar, i) => {
       if (finalChar === from[i]) return
@@ -65,12 +64,21 @@ export function SplitFlapText({ text, className }: SplitFlapTextProps) {
           },
           startDelay + s * STEP_MS,
         )
-        timers.current.push(t)
+        timers.push(t)
       }
     })
-  }, [text])
 
-  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+    // Cleanup undoes exactly what this run did (including the prevText
+    // bookkeeping), so React 18 StrictMode's dev-only mount->cleanup->remount
+    // cycle can't drop the very first flap-in: without resetting prevText
+    // here, the remount's effect would see `text === prevText.current` from
+    // the just-cleaned-up run and skip scheduling entirely, leaving the
+    // first-ever card blank.
+    return () => {
+      timers.forEach(clearTimeout)
+      prevText.current = previousText
+    }
+  }, [text])
 
   return (
     <span className={className}>
