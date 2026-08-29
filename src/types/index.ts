@@ -5,6 +5,8 @@ export const ROSTER_SIZE = GROUP_COUNT * GROUP_SIZE
 export interface Student {
   id: string
   name: string
+  /** Whether this student is in class today and should be included when generating groups. */
+  present: boolean
 }
 
 export type Roster = Student[]

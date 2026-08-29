@@ -35,6 +35,7 @@ function defaultRoster(): Roster {
   return Array.from({ length: ROSTER_SIZE }, (_, i) => ({
     id: `s${String(i + 1).padStart(2, '0')}`,
     name: DEFAULT_STUDENT_NAMES[i] ?? `Student ${i + 1}`,
+    present: true,
   }))
 }
 
@@ -50,7 +51,10 @@ export function getRoster(): Roster {
     return seeded
   }
   try {
-    return JSON.parse(raw) as Roster
+    // `present` is a newer field: older saved rosters won't have it, so
+    // default anyone missing it to present rather than migrating on read.
+    const parsed = JSON.parse(raw) as Roster
+    return parsed.map((s) => ({ ...s, present: s.present ?? true }))
   } catch {
     const seeded = defaultRoster()
     localStorage.setItem(ROSTER_KEY, JSON.stringify(seeded))

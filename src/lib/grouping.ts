@@ -1,6 +1,6 @@
 import { pairKey } from '@/lib/storage'
 import type { PairHistory } from '@/types'
-import { GROUP_COUNT, GROUP_SIZE } from '@/types'
+import { GROUP_COUNT } from '@/types'
 
 // Kept small so this stays comfortably sub-frame on the main thread — a
 // 20-element hill climb converges in a handful of swaps, so 300 iterations
@@ -74,17 +74,26 @@ function hillClimb(initialGroups: string[][], history: PairHistory): { groups: s
   return { groups, cost: totalCost(groups, history) }
 }
 
+/** Splits `total` into `count` near-equal parts, e.g. (18, 4) -> [5, 5, 4, 4]. */
+function evenSizes(total: number, count: number): number[] {
+  const base = Math.floor(total / count)
+  const remainder = total % count
+  return Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0))
+}
+
 /**
- * Partitions `studentIds` into GROUP_COUNT groups of GROUP_SIZE, minimizing the
- * total historical co-occurrence weight of pairs placed together this round.
- * Runs randomized-restart hill climbing and picks uniformly among the
- * lowest-cost results so equally-good (e.g. all-zero-history) groupings still
- * vary from one generation to the next.
+ * Partitions `studentIds` into GROUP_COUNT groups, as evenly sized as
+ * possible, minimizing the total historical co-occurrence weight of pairs
+ * placed together this round. Runs randomized-restart hill climbing and
+ * picks uniformly among the lowest-cost results so equally-good (e.g.
+ * all-zero-history) groupings still vary from one generation to the next.
  */
 export function generateGroups(studentIds: string[], history: PairHistory): string[][] {
-  if (studentIds.length !== GROUP_COUNT * GROUP_SIZE) {
-    throw new Error(`generateGroups expects exactly ${GROUP_COUNT * GROUP_SIZE} students, got ${studentIds.length}`)
+  if (studentIds.length < GROUP_COUNT) {
+    throw new Error(`generateGroups needs at least ${GROUP_COUNT} students, got ${studentIds.length}`)
   }
+
+  const sizes = evenSizes(studentIds.length, GROUP_COUNT)
 
   let best: { groups: string[][]; cost: number }[] = []
   let bestCost = Infinity
@@ -92,8 +101,10 @@ export function generateGroups(studentIds: string[], history: PairHistory): stri
   for (let r = 0; r < RESTARTS; r++) {
     const shuffled = shuffle(studentIds)
     const initial: string[][] = []
-    for (let g = 0; g < GROUP_COUNT; g++) {
-      initial.push(shuffled.slice(g * GROUP_SIZE, (g + 1) * GROUP_SIZE))
+    let offset = 0
+    for (const size of sizes) {
+      initial.push(shuffled.slice(offset, offset + size))
+      offset += size
     }
 
     const result = hillClimb(initial, history)

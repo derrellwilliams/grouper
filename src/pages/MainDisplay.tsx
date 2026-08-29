@@ -18,7 +18,7 @@ import {
 } from '@/lib/storage'
 import { broadcast, subscribe } from '@/lib/sync'
 import { groupNumberForIndex } from '@/lib/theme'
-import type { CurrentGroups, Roster } from '@/types'
+import { GROUP_COUNT, type CurrentGroups, type Roster } from '@/types'
 
 // Matches the refresh button's spin transition duration below, so the new
 // names reveal (and start their split-flap animation) right as it's finishing.
@@ -29,7 +29,7 @@ const SPIN_DEGREES = 2160
 function computeGroups(roster: Roster): CurrentGroups {
   const history = getPairHistory()
   const groups = generateGroups(
-    roster.map((s) => s.id),
+    roster.filter((s) => s.present).map((s) => s.id),
     history,
   )
   const nextHistory = applyGroupsToHistory(groups, history)
@@ -57,13 +57,20 @@ export function MainDisplay() {
 
   function invalidatesCurrentGroups(nextRoster: Roster, groups: CurrentGroups | null): boolean {
     if (!groups) return false
-    const ids = new Set(nextRoster.map((s) => s.id))
-    return groups.groups.some((group) => group.some((id) => !ids.has(id)))
+    // Covers both a renamed student (id disappears) and one just marked
+    // absent (id stays but is no longer present) — either way the displayed
+    // groups no longer reflect the roster and should be cleared.
+    const presentIds = new Set(nextRoster.filter((s) => s.present).map((s) => s.id))
+    return groups.groups.some((group) => group.some((id) => !presentIds.has(id)))
   }
 
   const names = useMemo(() => nameLookup(roster), [roster])
+  const presentCount = useMemo(() => roster.filter((s) => s.present).length, [roster])
+  const canGenerate = presentCount >= GROUP_COUNT
 
   function handleGenerate() {
+    if (!canGenerate) return
+
     // Kick the spin off first and let the browser paint it before the
     // (synchronous, CPU-bound) generation runs — otherwise the click handler
     // blocks the main thread and the spin never gets a frame to start on.
@@ -123,8 +130,10 @@ export function MainDisplay() {
         <Button
           size="icon"
           onClick={handleGenerate}
-          aria-label="Generate new groups"
-          className="absolute inset-0 z-20 m-auto size-16 cursor-pointer rounded-full shadow-lg transition-transform duration-150 ease-out hover:scale-125 active:translate-y-0! active:scale-75"
+          disabled={!canGenerate}
+          aria-label={canGenerate ? 'Generate new groups' : `Need at least ${GROUP_COUNT} students present`}
+          title={canGenerate ? undefined : `Need at least ${GROUP_COUNT} students present`}
+          className="absolute inset-0 z-20 m-auto size-16 cursor-pointer rounded-full shadow-lg transition-transform duration-150 ease-out hover:scale-125 active:translate-y-0! active:scale-75 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RefreshCw
             className="size-7"

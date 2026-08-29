@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import {
   Sheet,
   SheetContent,
@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { GROUP_SIZE, type Roster } from '@/types'
+import type { Roster, Student } from '@/types'
 
 interface RosterEditorSheetProps {
   open: boolean
@@ -21,21 +21,43 @@ interface RosterEditorSheetProps {
   onSave: (roster: Roster) => void
 }
 
+function firstName(name: string): string {
+  return name.trim().split(/\s+/)[0] ?? ''
+}
+
 export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: RosterEditorSheetProps) {
-  const [names, setNames] = useState<string[]>(() => roster.map((s) => s.name))
+  // Indexed the same as `roster` throughout — only the rendered order is
+  // alphabetized, so ids/order stay stable for saving.
+  const [students, setStudents] = useState<Roster>(roster)
 
   useEffect(() => {
-    if (open) setNames(roster.map((s) => s.name))
+    if (open) setStudents(roster)
   }, [open, roster])
 
-  const allFilled = names.every((n) => n.trim().length > 0)
+  const sortedIndices = useMemo(
+    () =>
+      students
+        .map((_, i) => i)
+        .sort((a, b) => firstName(students[a].name).localeCompare(firstName(students[b].name))),
+    [students],
+  )
+
+  const presentCount = students.filter((s) => s.present).length
+  const allFilled = students.every((s) => s.name.trim().length > 0)
+
+  function updateStudent(index: number, patch: Partial<Student>) {
+    setStudents((cur) => cur.map((s, i) => (i === index ? { ...s, ...patch } : s)))
+  }
 
   function handleSave() {
     if (!allFilled) return
     const nextRoster: Roster = roster.map((student, i) => {
-      const trimmed = names[i].trim()
-      if (trimmed === student.name) return student
-      return { id: `s-${Date.now()}-${i}`, name: trimmed }
+      const trimmed = students[i].name.trim()
+      const present = students[i].present
+      // A renamed student gets a fresh id (see MainDisplay) so old pair
+      // history isn't misattributed to them.
+      if (trimmed === student.name) return { ...student, present }
+      return { id: `s-${Date.now()}-${i}`, name: trimmed, present }
     })
     onSave(nextRoster)
     onOpenChange(false)
@@ -46,27 +68,32 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
       <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Edit roster</SheetTitle>
-          <SheetDescription>All {roster.length} names are required before groups can be generated.</SheetDescription>
+          <SheetDescription>
+            {presentCount} of {students.length} in class today — uncheck anyone who&apos;s not here.
+          </SheetDescription>
         </SheetHeader>
         <ScrollArea className="min-h-0 flex-1 px-6">
-          <div className="flex flex-col gap-4 py-2">
-            {names.map((name, i) => (
-              <div key={i} className="flex flex-col gap-4">
-                {i > 0 && i % GROUP_SIZE === 0 && <Separator />}
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor={`student-${i}`}>Student {i + 1}</Label>
+          <div className="flex flex-col gap-3 py-2">
+            {sortedIndices.map((i) => {
+              const student = students[i]
+              return (
+                <div key={student.id} className="flex items-center gap-3">
+                  <Checkbox
+                    id={`present-${student.id}`}
+                    checked={student.present}
+                    onCheckedChange={(checked) => updateStudent(i, { present: checked === true })}
+                  />
+                  <Label htmlFor={`present-${student.id}`} className="sr-only">
+                    {student.name.trim() || `Student ${i + 1}`} present today
+                  </Label>
                   <Input
-                    id={`student-${i}`}
-                    value={name}
-                    onChange={(e) => {
-                      const next = names.slice()
-                      next[i] = e.target.value
-                      setNames(next)
-                    }}
+                    value={student.name}
+                    onChange={(e) => updateStudent(i, { name: e.target.value })}
+                    className={student.present ? undefined : 'text-muted-foreground line-through'}
                   />
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </ScrollArea>
         <SheetFooter>
