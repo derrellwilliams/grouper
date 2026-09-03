@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { matchAttendanceToRoster, parseAttendanceCsv, type AttendanceMatchResult } from '@/lib/attendanceImport'
+import { matchAttendanceToRoster, type AttendanceMatchResult } from '@/lib/attendanceImport'
 import { fetchCanvasAttendance } from '@/lib/attendanceSync'
 import type { Roster, Student } from '@/types'
 
@@ -37,7 +37,6 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
   const [importSummary, setImportSummary] = useState<AttendanceMatchResult | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) {
@@ -61,20 +60,6 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
 
   function updateStudent(index: number, patch: Partial<Student>) {
     setStudents((cur) => cur.map((s, i) => (i === index ? { ...s, ...patch } : s)))
-  }
-
-  function handleImportCsv(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const text = typeof reader.result === 'string' ? reader.result : ''
-      const result = matchAttendanceToRoster(students, parseAttendanceCsv(text))
-      setStudents(result.updated)
-      setImportSummary(result)
-    }
-    reader.readAsText(file)
   }
 
   async function handleSyncFromCanvas() {
@@ -115,31 +100,11 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
             {presentCount} of {students.length} in class today — uncheck anyone who&apos;s not here.
           </SheetDescription>
         </SheetHeader>
-        <div className="flex items-center gap-3 border-b px-6 pb-4">
-          <Checkbox
-            id="add-guest"
-            checked={guestEnabled}
-            onCheckedChange={(checked) => setGuestEnabled(checked === true)}
-          />
-          <Label htmlFor="add-guest" className="font-normal">
-            Add a guest for today (shows up as &quot;Guest&quot;)
-          </Label>
-        </div>
         <div className="flex flex-col gap-2 border-b px-6 pb-4">
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" onClick={handleSyncFromCanvas} disabled={syncing}>
               {syncing ? 'Syncing…' : 'Sync from Canvas'}
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-              Import attendance CSV
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={handleImportCsv}
-            />
           </div>
           {syncError && <p className="text-destructive text-sm">{syncError}</p>}
           {importSummary && (
@@ -173,6 +138,21 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
                 </div>
               )
             })}
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="present-guest"
+                checked={guestEnabled}
+                onCheckedChange={(checked) => setGuestEnabled(checked === true)}
+              />
+              <Label htmlFor="present-guest" className="sr-only">
+                Guest present today
+              </Label>
+              <Input
+                value="Guest"
+                readOnly
+                className={guestEnabled ? undefined : 'text-muted-foreground line-through'}
+              />
+            </div>
           </div>
         </ScrollArea>
         <SheetFooter>
