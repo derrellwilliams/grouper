@@ -112,7 +112,12 @@ export function matchAttendanceToRoster(roster: Roster, records: AttendanceRecor
   const updated = roster.map((student) => {
     const key = normalizeName(student.name)
     const record = byName.get(key)
-    if (!record || record.status === 'unknown') {
+    // No record at all means we couldn't find this roster name in the
+    // Canvas data (likely a spelling mismatch) — leave it untouched rather
+    // than guess. A record with status "unknown" (Canvas shows them as not
+    // yet marked) is a real match, just not a present one — Canvas has no
+    // confirmation they're here, so default to unchecked.
+    if (!record) {
       unmatchedRosterNames.push(student.name)
       return student
     }
