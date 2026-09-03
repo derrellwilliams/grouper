@@ -13,6 +13,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { matchAttendanceToRoster, parseAttendanceCsv, type AttendanceMatchResult } from '@/lib/attendanceImport'
+import { fetchCanvasAttendance } from '@/lib/attendanceSync'
 import type { Roster, Student } from '@/types'
 
 interface RosterEditorSheetProps {
@@ -34,6 +35,8 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
   // unchecked so a forgotten guest doesn't silently keep reappearing.
   const [guestEnabled, setGuestEnabled] = useState(false)
   const [importSummary, setImportSummary] = useState<AttendanceMatchResult | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -41,6 +44,7 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
       setStudents(roster)
       setGuestEnabled(false)
       setImportSummary(null)
+      setSyncError(null)
     }
   }, [open, roster])
 
@@ -71,6 +75,21 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
       setImportSummary(result)
     }
     reader.readAsText(file)
+  }
+
+  async function handleSyncFromCanvas() {
+    setSyncing(true)
+    setSyncError(null)
+    try {
+      const { records } = await fetchCanvasAttendance()
+      const result = matchAttendanceToRoster(students, records)
+      setStudents(result.updated)
+      setImportSummary(result)
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Sync failed')
+    } finally {
+      setSyncing(false)
+    }
   }
 
   function handleSave() {
@@ -107,7 +126,10 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
           </Label>
         </div>
         <div className="flex flex-col gap-2 border-b px-6 pb-4">
-          <div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={handleSyncFromCanvas} disabled={syncing}>
+              {syncing ? 'Syncing…' : 'Sync from Canvas'}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
               Import attendance CSV
             </Button>
@@ -119,6 +141,7 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
               onChange={handleImportCsv}
             />
           </div>
+          {syncError && <p className="text-destructive text-sm">{syncError}</p>}
           {importSummary && (
             <p className="text-muted-foreground text-sm">
               Matched {importSummary.matchedCount} of {students.length}
