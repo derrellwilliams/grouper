@@ -13,7 +13,7 @@ import type { Roster } from '@/types'
 
 interface SettingsMenuProps {
   roster: Roster
-  onRosterSaved: (roster: Roster) => void
+  onRosterSaved: (roster: Roster, includeGuest: boolean) => void
   onHistoryReset: () => void
 }
 

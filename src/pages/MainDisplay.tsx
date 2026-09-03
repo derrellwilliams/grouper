@@ -30,13 +30,12 @@ const SPIN_DURATION_MS = 1100
 const REVEAL_LEAD_MS = 500
 const SPIN_DEGREES = 2160
 
-function computeGroups(roster: Roster, groupSize: GroupSizeOption): CurrentGroups {
+function computeGroups(roster: Roster, groupSize: GroupSizeOption, guestId: string | null): CurrentGroups {
   const history = getPairHistory()
-  const groups = generateGroups(
-    roster.filter((s) => s.present).map((s) => s.id),
-    history,
-    groupSize,
-  )
+  const presentIds = roster.filter((s) => s.present).map((s) => s.id)
+  if (guestId) presentIds.push(guestId)
+
+  const groups = generateGroups(presentIds, history, groupSize)
   const nextHistory = applyGroupsToHistory(groups, history)
   const next: CurrentGroups = { generatedAt: new Date().toISOString(), groups }
 
@@ -74,6 +73,8 @@ export function MainDisplay() {
   // pressed, so the first-ever groups still get their entrance/flap-in.
   const [currentGroups, setCurrentGroupsState] = useState<CurrentGroups | null>(() => getCurrentGroups())
   const [groupSize, setGroupSizeState] = useState<GroupSizeOption>(() => getGroupSize())
+  // A one-off addition for today, not a roster member — never persisted.
+  const [guestId, setGuestId] = useState<string | null>(null)
   const [spins, setSpins] = useState(0)
 
   useEffect(() => {
@@ -85,16 +86,19 @@ export function MainDisplay() {
     })
   }, [])
 
-  function invalidatesCurrentGroups(nextRoster: Roster, groups: CurrentGroups | null): boolean {
+  function invalidatesCurrentGroups(validIds: Set<string>, groups: CurrentGroups | null): boolean {
     if (!groups) return false
-    // Covers both a renamed student (id disappears) and one just marked
-    // absent (id stays but is no longer present) — either way the displayed
-    // groups no longer reflect the roster and should be cleared.
-    const presentIds = new Set(nextRoster.filter((s) => s.present).map((s) => s.id))
-    return groups.groups.some((group) => group.some((id) => !presentIds.has(id)))
+    // Covers a renamed student (id disappears), one just marked absent (id
+    // stays but is no longer present), and a guest being removed/replaced —
+    // any of those means the displayed groups no longer reflect reality.
+    return groups.groups.some((group) => group.some((id) => !validIds.has(id)))
   }
 
-  const names = useMemo(() => nameLookup(roster), [roster])
+  const names = useMemo(() => {
+    const map = nameLookup(roster)
+    if (guestId) map.set(guestId, 'Guest')
+    return map
+  }, [roster, guestId])
   const presentCount = useMemo(() => roster.filter((s) => s.present).length, [roster])
   const canGenerate = presentCount >= MIN_PRESENT_TO_GENERATE
 
@@ -112,7 +116,7 @@ export function MainDisplay() {
     // blocks the main thread and the spin never gets a frame to start on.
     setSpins((s) => s + 1)
     setTimeout(() => {
-      const next = computeGroups(roster, groupSize)
+      const next = computeGroups(roster, groupSize, guestId)
       setTimeout(() => {
         setCurrentGroupsState(next)
         broadcast({ type: 'groups-updated' })
@@ -126,18 +130,25 @@ export function MainDisplay() {
     broadcast({ type: 'group-size-updated' })
   }
 
-  function handleRosterSaved(nextRoster: Roster) {
+  function handleRosterSaved(nextRoster: Roster, includeGuest: boolean) {
     setRoster(nextRoster)
     setRosterState(nextRoster)
+
+    // Fresh id each time so a past guest's history never gets attributed to
+    // whoever checks the box next.
+    const nextGuestId = includeGuest ? `guest-${Date.now()}` : null
 
     // A renamed student gets a fresh id (see RosterEditorSheet) so old pair
     // history isn't misattributed — but that also orphans any in-progress
     // grouping that referenced the old id. Clear it rather than show gaps.
-    if (invalidatesCurrentGroups(nextRoster, currentGroups)) {
+    const validIds = new Set(nextRoster.filter((s) => s.present).map((s) => s.id))
+    if (nextGuestId) validIds.add(nextGuestId)
+    if (invalidatesCurrentGroups(validIds, currentGroups)) {
       clearCurrentGroups()
       setCurrentGroupsState(null)
     }
 
+    setGuestId(nextGuestId)
     broadcast({ type: 'roster-updated' })
   }
 
