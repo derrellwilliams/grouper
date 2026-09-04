@@ -1,5 +1,3 @@
-export const ROSTER_SIZE = 20
-
 export const GROUP_SIZE_OPTIONS = [2, 3, 4, 5, 6] as const
 export type GroupSizeOption = (typeof GROUP_SIZE_OPTIONS)[number]
 export const DEFAULT_GROUP_SIZE: GroupSizeOption = 5

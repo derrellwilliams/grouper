@@ -1,43 +1,15 @@
 import type { CurrentGroups, GroupSizeOption, PairHistory, Roster } from '@/types'
-import { DEFAULT_GROUP_SIZE, GROUP_SIZE_OPTIONS, ROSTER_SIZE } from '@/types'
+import { DEFAULT_GROUP_SIZE, GROUP_SIZE_OPTIONS } from '@/types'
 
-// Bumped from v1: the default roster changed from placeholder "Student N"
-// names to real names, and only a missing key gets seeded with the default —
-// bumping the version forces that reseed for anyone who already had v1 saved.
 const ROSTER_KEY = 'grouper.roster.v2'
 const PAIR_HISTORY_KEY = 'grouper.pairHistory.v1'
 const CURRENT_GROUPS_KEY = 'grouper.currentGroups.v1'
 const GROUP_SIZE_KEY = 'grouper.groupSize.v1'
 
-const DEFAULT_STUDENT_NAMES = [
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-  'REDACTED',
-]
-
+// No default students — a fresh roster starts empty and is built up via the
+// roster editor's "Add student" button (or by hand-editing localStorage).
 function defaultRoster(): Roster {
-  return Array.from({ length: ROSTER_SIZE }, (_, i) => ({
-    id: `s${String(i + 1).padStart(2, '0')}`,
-    name: DEFAULT_STUDENT_NAMES[i] ?? `Student ${i + 1}`,
-    present: true,
-  }))
+  return []
 }
 
 export function pairKey(idA: string, idB: string): string {

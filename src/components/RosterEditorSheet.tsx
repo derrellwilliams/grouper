@@ -1,3 +1,4 @@
+import { Plus, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -62,6 +63,14 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
     setStudents((cur) => cur.map((s, i) => (i === index ? { ...s, ...patch } : s)))
   }
 
+  function addStudent() {
+    setStudents((cur) => [...cur, { id: `s-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', present: true }])
+  }
+
+  function removeStudent(index: number) {
+    setStudents((cur) => cur.filter((_, i) => i !== index))
+  }
+
   async function handleSyncFromCanvas() {
     setSyncing(true)
     setSyncError(null)
@@ -79,13 +88,15 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
 
   function handleSave() {
     if (!allFilled) return
-    const nextRoster: Roster = roster.map((student, i) => {
-      const trimmed = students[i].name.trim()
-      const present = students[i].present
+    const originalById = new Map(roster.map((s) => [s.id, s]))
+    const nextRoster: Roster = students.map((student) => {
+      const trimmed = student.name.trim()
+      const original = originalById.get(student.id)
       // A renamed student gets a fresh id (see MainDisplay) so old pair
-      // history isn't misattributed to them.
-      if (trimmed === student.name) return { ...student, present }
-      return { id: `s-${Date.now()}-${i}`, name: trimmed, present }
+      // history isn't misattributed to them. Newly added students (no
+      // original to compare against) just keep the id they were created with.
+      if (!original || trimmed === original.name) return { ...student, name: trimmed }
+      return { id: `s-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: trimmed, present: student.present }
     })
     onSave(nextRoster, guestEnabled)
     onOpenChange(false)
@@ -135,6 +146,15 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
                     onChange={(e) => updateStudent(i, { name: e.target.value })}
                     className={student.present ? undefined : 'text-muted-foreground line-through'}
                   />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Remove ${student.name.trim() || 'student'}`}
+                    onClick={() => removeStudent(i)}
+                  >
+                    <X />
+                  </Button>
                 </div>
               )
             })}
@@ -152,7 +172,11 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
                 readOnly
                 className={guestEnabled ? undefined : 'text-muted-foreground line-through'}
               />
+              <div className="size-7 shrink-0" />
             </div>
+            <Button type="button" variant="outline" size="sm" onClick={addStudent} className="self-start">
+              <Plus /> Add student
+            </Button>
           </div>
         </ScrollArea>
         <SheetFooter>
