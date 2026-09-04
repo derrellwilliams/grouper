@@ -1,5 +1,3 @@
-import { STORAGE_KEYS } from '@/lib/storage'
-
 export type SyncMessage =
   | { type: 'groups-updated' }
   | { type: 'roster-updated' }
@@ -10,6 +8,11 @@ type Listener = (message: SyncMessage) => void
 
 const CHANNEL_NAME = 'grouper-sync'
 
+// BroadcastChannel has shipped in every evergreen browser (Safari included,
+// since 15.4) for years now, so this is the only cross-tab mechanism —
+// no `storage`-event fallback. Every state-mutating action already calls
+// `broadcast()` explicitly, so nothing is lost by not also watching
+// `localStorage` writes directly.
 let channel: BroadcastChannel | null = null
 if (typeof BroadcastChannel !== 'undefined') {
   channel = new BroadcastChannel(CHANNEL_NAME)
@@ -22,28 +25,6 @@ if (channel) {
     for (const listener of listeners) listener(event.data)
   }
 }
-
-const WATCHED_KEYS: string[] = [
-  STORAGE_KEYS.roster,
-  STORAGE_KEYS.pairHistory,
-  STORAGE_KEYS.currentGroups,
-  STORAGE_KEYS.groupSize,
-]
-
-window.addEventListener('storage', (event: StorageEvent) => {
-  if (!event.key || !WATCHED_KEYS.includes(event.key)) return
-
-  const message: SyncMessage =
-    event.key === STORAGE_KEYS.roster
-      ? { type: 'roster-updated' }
-      : event.key === STORAGE_KEYS.groupSize
-        ? { type: 'group-size-updated' }
-        : event.key === STORAGE_KEYS.pairHistory && event.newValue === '{}'
-          ? { type: 'history-reset' }
-          : { type: 'groups-updated' }
-
-  for (const listener of listeners) listener(message)
-})
 
 /** Notifies other tabs. Does NOT fire in the tab that calls it — callers must re-render their own UI directly. */
 export function broadcast(message: SyncMessage): void {

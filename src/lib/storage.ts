@@ -88,10 +88,3 @@ export function getGroupSize(): GroupSizeOption {
 export function setGroupSize(size: GroupSizeOption): void {
   localStorage.setItem(GROUP_SIZE_KEY, String(size))
 }
-
-export const STORAGE_KEYS = {
-  roster: ROSTER_KEY,
-  pairHistory: PAIR_HISTORY_KEY,
-  currentGroups: CURRENT_GROUPS_KEY,
-  groupSize: GROUP_SIZE_KEY,
-} as const

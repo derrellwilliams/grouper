@@ -21,6 +21,10 @@ function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? ''
 }
 
+function randomStudentId(): string {
+  return `s-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 // Matches the row's exit animation duration below — the row is only
 // actually removed from state once its animate-out has had time to play.
 const ROW_EXIT_MS = 150
@@ -76,7 +80,7 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
   }
 
   function addStudent() {
-    setStudents((cur) => [...cur, { id: `s-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', present: true }])
+    setStudents((cur) => [...cur, { id: randomStudentId(), name: '', present: true }])
   }
 
   function removeStudent(id: string) {
@@ -118,7 +122,7 @@ export function RosterEditorSheet({ open, onOpenChange, roster, onSave }: Roster
       // history isn't misattributed to them. Newly added students (no
       // original to compare against) just keep the id they were created with.
       if (!original || trimmed === original.name) return { ...student, name: trimmed }
-      return { id: `s-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: trimmed, present: student.present }
+      return { id: randomStudentId(), name: trimmed, present: student.present }
     })
     onSave(nextRoster, guestEnabled)
     onOpenChange(false)
